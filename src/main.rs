@@ -7,6 +7,10 @@ use clap::{Parser, Subcommand};
 use std::path::PathBuf;
 
 /// Odd — a weird way to deal with the filesystem.
+///
+/// This binary intentionally exposes only the first vertical slice:
+/// init, remember, show, resurrect. Everything else in the design notes
+/// gets added once this slice is solid, one command at a time.
 #[derive(Parser)]
 #[command(name = "odd", version, about)]
 struct Cli {
@@ -35,6 +39,16 @@ enum Commands {
         #[arg(long = "ns")]
         namespace: Option<String>,
     },
+    /// Materialize a remembered object back to disk.
+    Resurrect {
+        target: String,
+        #[arg(long)]
+        dest: Option<PathBuf>,
+        #[arg(long)]
+        force: bool,
+        #[arg(long = "ns")]
+        namespace: Option<String>,
+    },
 }
 
 fn main() -> Result<()> {
@@ -47,5 +61,11 @@ fn main() -> Result<()> {
             namespace,
         } => commands::remember::run(path, as_name, namespace),
         Commands::Show { target, namespace } => commands::show::run(target, namespace),
+        Commands::Resurrect {
+            target,
+            dest,
+            force,
+            namespace,
+        } => commands::resurrect::run(target, dest, force, namespace),
     }
 }

@@ -38,8 +38,6 @@ impl BlobStore {
         Ok(hash)
     }
 
-    // Used by resurrect, landing in the next commit.
-    #[allow(dead_code)]
     pub fn get_bytes(&self, hash: &str) -> Result<Vec<u8>> {
         let path = self.path_for_hash(hash);
         fs::read(path).with_context(|| format!("read blob {hash}"))
