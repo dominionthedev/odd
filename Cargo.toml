@@ -3,12 +3,16 @@ name = "odd"
 version = "0.1.0"
 edition = "2021"
 
-# Deliberately minimal. A dependency is added in the same commit as the
-# code that first uses it — never ahead of it.
+# A dependency is added in the same commit as the code that first uses it.
 
 [dependencies]
+anyhow = "1"
+clap = { version = "=4.4.18", features = ["derive"] }
+uuid = { version = "=1.10.0", features = ["v7"] }
+getrandom = "=0.2.15"
 
 [dev-dependencies]
+tempfile = "=3.10.1"
 
 [profile.release]
 lto = true
