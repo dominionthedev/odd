@@ -1,4 +1,6 @@
 pub mod init;
+pub mod remember;
+pub mod show;
 
-// remember, show, resurrect land in later commits, each with its own
-// dependencies and its own tests — not scaffolded ahead of time here.
+// resurrect lands in the next commit, with its own dependencies and its
+// own test.

@@ -70,13 +70,10 @@ impl Store {
         Ok(Self { id, path })
     }
 
-    // Called by remember/show/resurrect once they exist — not this commit.
-    #[allow(dead_code)]
     pub fn db_path(&self) -> PathBuf {
         self.path.join("metadata.db")
     }
 
-    #[allow(dead_code)]
     pub fn objects_dir(&self) -> PathBuf {
         self.path.join("objects")
     }
@@ -103,10 +100,6 @@ impl Workspace {
         Ok(Self { odd_dir, store })
     }
 
-    // Used once remember/show/resurrect need to locate an existing
-    // workspace — init doesn't, since it's the one command that creates
-    // a workspace rather than finding one.
-    #[allow(dead_code)]
     pub fn find(start: Option<PathBuf>) -> Result<Self> {
         let mut dir = start.unwrap_or(std::env::current_dir()?);
         loop {
