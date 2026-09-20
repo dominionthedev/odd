@@ -1,7 +1,7 @@
 use anyhow::{bail, Context, Result};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
-use crate::model::{ContentRef, ObjectId};
+use crate::model::{ContentRef, Object, ObjectId};
 use crate::storage::{BlobStore, Db, Workspace};
 
 const DEFAULT_NAMESPACE: &str = "manual:default";
@@ -33,27 +33,53 @@ pub fn run(
         .or(default_dest)
         .ok_or_else(|| anyhow::anyhow!("no destination known for {target}; pass --dest"))?;
 
-    if dest.exists() && !force {
-        bail!("destination exists: {} (use --force)", dest.display());
-    }
-
     let obj = db
         .get_object(&object_id)?
         .ok_or_else(|| anyhow::anyhow!("object referenced but missing: {}", object_id.as_str()))?;
 
-    match &obj.content {
-        ContentRef::Blob { hash } => {
-            let data = blobs.get_bytes(hash)?;
-            if let Some(parent) = dest.parent() {
-                std::fs::create_dir_all(parent).context("create destination parent dir")?;
-            }
-            std::fs::write(&dest, data).context("write resurrected file")?;
-        }
-        ContentRef::Directory { .. } => {
-            bail!("resurrecting directories is not part of this first slice yet");
-        }
-    }
+    materialize(&db, &blobs, &obj, &dest, force)?;
 
     println!("Resurrected {} to {}", object_id.as_str(), dest.display());
     Ok(())
+}
+
+/// Blob content is gated by `force` like any single-file write. Directory
+/// content is always allowed to descend into an existing directory —
+/// composing into a place that already exists is fine; overwriting an
+/// unrelated file there is what `force` actually guards against, and that
+/// check happens per-file at the leaves, not once at the top.
+fn materialize(db: &Db, blobs: &BlobStore, obj: &Object, dest: &Path, force: bool) -> Result<()> {
+    match &obj.content {
+        ContentRef::Blob { hash } => {
+            if dest.exists() && !force {
+                bail!("destination exists: {} (use --force)", dest.display());
+            }
+            let data = blobs.get_bytes(hash)?;
+            if let Some(parent) = dest.parent() {
+                fs_create_dir_all(parent)?;
+            }
+            std::fs::write(dest, data).context("write resurrected file")?;
+        }
+        ContentRef::Directory { entries } => {
+            if dest.exists() && !dest.is_dir() {
+                bail!(
+                    "destination exists and is not a directory: {}",
+                    dest.display()
+                );
+            }
+            fs_create_dir_all(dest)?;
+            for (name, child_id) in entries {
+                let child_obj = db.get_object(child_id)?.ok_or_else(|| {
+                    anyhow::anyhow!("object referenced but missing: {}", child_id.as_str())
+                })?;
+                materialize(db, blobs, &child_obj, &dest.join(name), force)?;
+            }
+        }
+    }
+    Ok(())
+}
+
+fn fs_create_dir_all(path: &Path) -> Result<()> {
+    std::fs::create_dir_all(path)
+        .with_context(|| format!("create destination directory {}", path.display()))
 }

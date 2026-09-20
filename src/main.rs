@@ -25,13 +25,16 @@ enum Commands {
         #[arg(long)]
         store: Option<String>,
     },
-    /// Capture a file into the store.
+    /// Capture a file or directory into the store.
     Remember {
         path: PathBuf,
         #[arg(long = "as")]
         as_name: Option<String>,
         #[arg(long = "ns")]
         namespace: Option<String>,
+        /// Required for a directory; recurses and binds every child too.
+        #[arg(short = 'r', long = "recursive")]
+        recursive: bool,
     },
     /// Show a remembered object's detail.
     Show {
@@ -59,7 +62,8 @@ fn main() -> Result<()> {
             path,
             as_name,
             namespace,
-        } => commands::remember::run(path, as_name, namespace),
+            recursive,
+        } => commands::remember::run(path, as_name, namespace, recursive),
         Commands::Show { target, namespace } => commands::show::run(target, namespace),
         Commands::Resurrect {
             target,

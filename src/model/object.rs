@@ -20,12 +20,6 @@ impl ObjectId {
     }
 }
 
-// Directory support (new_directory/structural_id) is written and tested
-// now, but not wired into any command yet — `remember` only handles files
-// in this slice. #[allow(dead_code)] here is a tracked, dated exception,
-// not silence: it goes away the moment `remember` grows directory support,
-// which is the very next slice in OPERATIONS.md's build order.
-#[allow(dead_code)]
 fn sha256_hex(bytes: &[u8]) -> String {
     let mut hasher = Sha256::new();
     hasher.update(bytes);
@@ -75,7 +69,6 @@ impl Object {
         }
     }
 
-    #[allow(dead_code)]
     pub fn new_directory(entries: BTreeMap<String, ObjectId>) -> Self {
         let id = structural_id(ObjectKind::Directory, &entries);
         Self {
@@ -90,7 +83,6 @@ impl Object {
 
 /// Structural identity: derived from kind + sorted child map only.
 /// Never from path, mtime, or any other filesystem fact.
-#[allow(dead_code)]
 fn structural_id(kind: ObjectKind, entries: &BTreeMap<String, ObjectId>) -> ObjectId {
     let prefix = match kind {
         ObjectKind::Directory => "directory\n",
