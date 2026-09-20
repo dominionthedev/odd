@@ -1,6 +1,7 @@
-use anyhow::{bail, Result};
+use anyhow::Result;
 
-use crate::model::{ContentRef, ObjectId};
+use crate::model::ContentRef;
+use crate::resolve::resolve;
 use crate::storage::{Db, Workspace};
 
 const DEFAULT_NAMESPACE: &str = "manual:default";
@@ -10,14 +11,7 @@ pub fn run(target: String, namespace: Option<String>) -> Result<()> {
     let db = Db::open(&ws.store.db_path())?;
     let namespace_id = namespace.unwrap_or_else(|| DEFAULT_NAMESPACE.to_string());
 
-    // Exact-length rule, not a threshold guess — see OPERATIONS.md §1.
-    let object_id = if ObjectId::looks_like_id(&target) {
-        ObjectId(target.clone())
-    } else if let Some(binding) = db.lookup_binding(&namespace_id, &target)? {
-        binding.object_id
-    } else {
-        bail!("not remembered in namespace {namespace_id}: {target}");
-    };
+    let (object_id, _binding) = resolve(&db, &namespace_id, &target)?;
 
     let obj = db
         .get_object(&object_id)?

@@ -54,6 +54,7 @@ impl Db {
         let kind = match obj.kind {
             ObjectKind::File => "file",
             ObjectKind::Directory => "directory",
+            ObjectKind::Composed => "composed",
         };
         self.conn.execute(
             "INSERT OR REPLACE INTO objects (id, kind, content, parents, created)
@@ -82,6 +83,7 @@ impl Db {
             let kind = match kind_s.as_str() {
                 "file" => ObjectKind::File,
                 "directory" => ObjectKind::Directory,
+                "composed" => ObjectKind::Composed,
                 other => anyhow::bail!("unknown object kind in db: {other}"),
             };
             let content: ContentRef = serde_json::from_str(&content_s)?;

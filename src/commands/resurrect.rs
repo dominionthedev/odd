@@ -1,7 +1,8 @@
 use anyhow::{bail, Context, Result};
 use std::path::{Path, PathBuf};
 
-use crate::model::{ContentRef, Object, ObjectId};
+use crate::model::{ContentRef, Object};
+use crate::resolve::resolve;
 use crate::storage::{BlobStore, Db, Workspace};
 
 const DEFAULT_NAMESPACE: &str = "manual:default";
@@ -20,14 +21,8 @@ pub fn run(
     // Default destination comes from the *binding*, per OPERATIONS.md §1 —
     // never from the object, since a deduped object may be reachable from
     // several bindings with different original paths.
-    let (object_id, default_dest) = if ObjectId::looks_like_id(&target) {
-        (ObjectId(target.clone()), None)
-    } else if let Some(binding) = db.lookup_binding(&namespace_id, &target)? {
-        let d = binding.original_path.clone().map(PathBuf::from);
-        (binding.object_id, d)
-    } else {
-        bail!("not remembered in namespace {namespace_id}: {target}");
-    };
+    let (object_id, binding) = resolve(&db, &namespace_id, &target)?;
+    let default_dest = binding.and_then(|b| b.original_path).map(PathBuf::from);
 
     let dest = dest
         .or(default_dest)

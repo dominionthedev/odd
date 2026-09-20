@@ -1,5 +1,6 @@
 mod commands;
 mod model;
+mod resolve;
 mod storage;
 
 use anyhow::Result;
@@ -52,6 +53,16 @@ enum Commands {
         #[arg(long = "ns")]
         namespace: Option<String>,
     },
+    /// Compose existing objects into a new one, without touching disk.
+    Graft {
+        target_name: String,
+        /// One or more "entry=source" pairs.
+        entries: Vec<String>,
+        #[arg(long)]
+        into: Option<String>,
+        #[arg(long = "ns")]
+        namespace: Option<String>,
+    },
 }
 
 fn main() -> Result<()> {
@@ -71,5 +82,11 @@ fn main() -> Result<()> {
             force,
             namespace,
         } => commands::resurrect::run(target, dest, force, namespace),
+        Commands::Graft {
+            target_name,
+            entries,
+            into,
+            namespace,
+        } => commands::graft::run(target_name, entries, into, namespace),
     }
 }

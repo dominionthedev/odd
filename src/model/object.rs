@@ -26,7 +26,7 @@ fn sha256_hex(bytes: &[u8]) -> String {
     hex::encode(hasher.finalize())
 }
 
-/// v1 kinds only — File and Directory. State, Composed, Historical,
+/// v1 kinds — File, Directory, and Composed. State, Historical,
 /// Projection and Namespace are named in the design doc but deliberately
 /// not implemented yet; adding them here ahead of a command that
 /// constructs them is exactly the mistake we're not repeating.
@@ -35,8 +35,18 @@ fn sha256_hex(bytes: &[u8]) -> String {
 pub enum ObjectKind {
     File,
     Directory,
+    /// Built by `graft`, never by `remember`. Structurally identical to
+    /// Directory — same entries content shape — but kept as its own kind
+    /// so a captured directory and a composed one with the same entries
+    /// never collide, and so future commands can ask "was this actually
+    /// captured from disk, or built in the store" without inspecting how
+    /// it was made.
+    Composed,
 }
 
+/// Directory and Composed share this shape on purpose — both are just a
+/// sorted name-to-child map. What differs is how the object came to
+/// exist (see ObjectKind::Composed), not what it contains.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "type")]
 pub enum ContentRef {
@@ -79,6 +89,17 @@ impl Object {
             created: Utc::now(),
         }
     }
+
+    pub fn new_composed(entries: BTreeMap<String, ObjectId>) -> Self {
+        let id = structural_id(ObjectKind::Composed, &entries);
+        Self {
+            id,
+            kind: ObjectKind::Composed,
+            content: ContentRef::Directory { entries },
+            parents: Vec::new(),
+            created: Utc::now(),
+        }
+    }
 }
 
 /// Structural identity: derived from kind + sorted child map only.
@@ -86,6 +107,7 @@ impl Object {
 fn structural_id(kind: ObjectKind, entries: &BTreeMap<String, ObjectId>) -> ObjectId {
     let prefix = match kind {
         ObjectKind::Directory => "directory\n",
+        ObjectKind::Composed => "composed\n",
         ObjectKind::File => unreachable!("files are addressed by blob hash, not structural_id"),
     };
     let mut buf = String::from(prefix);
@@ -159,5 +181,19 @@ mod tests {
         entries.insert("x".to_string(), f.id.clone());
         let d = Object::new_directory(entries);
         assert_ne!(f.id, d.id);
+    }
+
+    #[test]
+    fn directory_and_composed_never_collide_with_identical_entries() {
+        // Same shape, same entries, different kind — the whole reason
+        // Composed keeps its own hash prefix instead of reusing
+        // Directory's.
+        let child = Object::new_file(sha256_hex(b"whatever"));
+        let mut entries = BTreeMap::new();
+        entries.insert("x".to_string(), child.id.clone());
+
+        let dir = Object::new_directory(entries.clone());
+        let composed = Object::new_composed(entries);
+        assert_ne!(dir.id, composed.id);
     }
 }
