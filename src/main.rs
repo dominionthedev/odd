@@ -63,6 +63,15 @@ enum Commands {
         #[arg(long = "ns")]
         namespace: Option<String>,
     },
+    /// Remove an entry from a composed object, producing a new one.
+    Ungraft {
+        composed_name: String,
+        entry: String,
+        #[arg(long = "as")]
+        as_name: Option<String>,
+        #[arg(long = "ns")]
+        namespace: Option<String>,
+    },
 }
 
 fn main() -> Result<()> {
@@ -88,5 +97,11 @@ fn main() -> Result<()> {
             into,
             namespace,
         } => commands::graft::run(target_name, entries, into, namespace),
+        Commands::Ungraft {
+            composed_name,
+            entry,
+            as_name,
+            namespace,
+        } => commands::ungraft::run(composed_name, entry, as_name, namespace),
     }
 }
